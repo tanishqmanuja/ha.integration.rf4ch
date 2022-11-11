@@ -1,0 +1,11 @@
+{
+  "codeowners": ["@tanishqmanuja"],
+  "config_flow": false,
+  "dependencies": [],
+  "documentation": "https://github.com/tanishqmanuja/ha.integration.rf4ch",
+  "domain": "rf4ch",
+  "iot_class": "assumed_state",
+  "name": "Rf 4 Channel",
+  "requirements": [],
+  "version": "0.1.0"
+}

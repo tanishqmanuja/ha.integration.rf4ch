@@ -1,0 +1,17 @@
+# Describes the format for available rf4ch services
+
+internal_state_on:
+  name: Override internal state on
+  description: Manually set internal channel state to on.
+  target:
+    entity:
+      integration: rf4ch
+      domain: switch
+
+internal_state_off:
+  name: Override internal state off
+  description: Manually set internal channel state to off.
+  target:
+    entity:
+      integration: rf4ch
+      domain: switch
