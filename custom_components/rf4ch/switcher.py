@@ -5,7 +5,7 @@ import logging
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity import DeviceInfo, Entity
 from homeassistant.helpers.typing import ConfigType
 
 from .binary_sensor import RfAvailabilityBinarySensor
@@ -183,12 +183,12 @@ class RfSwitcher:
         if action == ACTION_SYNC:
             self.sync()
         elif action in (ACTION_ON, ACTION_OFF):
+            self.send_rf(action)
             state = action == ACTION_ON
             for channel in self._channels:
                 self._states[channel] = state
             for switch in self.switches:
-                switch.schedule_update_ha_state()
-            self.send_rf(action)
+                self._mark_for_update(switch)
 
     def get_channel_state(self, channel):
         """Get internal state of channel."""
@@ -200,3 +200,10 @@ class RfSwitcher:
         for channel, state in self._states.items():
             if channel in self._channels and state is True:
                 self.send_rf(channel)
+
+    def _mark_for_update(self, entity: Entity):
+        """Mark for HA state update"""
+        if entity.hass is None:
+            return
+
+        entity.schedule_update_ha_state()
