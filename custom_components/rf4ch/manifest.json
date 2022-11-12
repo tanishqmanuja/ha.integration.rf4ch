@@ -3,6 +3,7 @@
   "config_flow": false,
   "dependencies": [],
   "documentation": "https://github.com/tanishqmanuja/ha.integration.rf4ch",
+  "issue_tracker": "https://github.com/tanishqmanuja/ha.integration.rf4ch/issues",
   "domain": "rf4ch",
   "iot_class": "assumed_state",
   "name": "Rf 4 Channel",
