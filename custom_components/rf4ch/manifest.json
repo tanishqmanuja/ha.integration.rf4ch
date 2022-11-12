@@ -8,5 +8,5 @@
   "iot_class": "assumed_state",
   "name": "Rf 4 Channel",
   "requirements": [],
-  "version": "0.2.2"
+  "version": "0.2.3"
 }
