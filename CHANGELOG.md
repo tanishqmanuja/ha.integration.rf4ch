@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.3.1
+
+#### What's Changed
+
+- Fix import
+
 ## v0.3.0
 
 #### What's Changed
