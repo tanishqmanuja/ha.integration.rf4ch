@@ -7,7 +7,7 @@ import logging
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import TemplateError
 from homeassistant.helpers.entity import DeviceInfo, Entity
-from homeassistant.helpers.event import TrackTemplate
+from homeassistant.helpers.event import TrackTemplate, async_track_template_result
 from homeassistant.helpers.template import Template
 
 from .binary_sensor import RfAvailabilityBinarySensor
@@ -27,8 +27,6 @@ from .models import (
     SwitcherOptions,
 )
 from .switch import RfSwitch
-
-from tests.helpers.test_event import async_track_template_result
 
 ICONS = {
     CHANNEL_A: "mdi:numeric-1-box",
