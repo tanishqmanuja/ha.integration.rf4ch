@@ -2,29 +2,30 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from dataclasses import dataclass
 from typing import Protocol
 
+from homeassistant.backports.enum import StrEnum
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.helpers.template import Template
 
 
-class Channel(Enum):
+class Channel(StrEnum):
     """Output channels for Switcher."""
 
-    A = "CH1"
-    B = "CH2"
-    C = "CH3"
-    D = "CH4"
+    A = "Ch1"
+    B = "Ch2"
+    C = "Ch3"
+    D = "Ch4"
 
 
-class Action(Enum):
+class Action(StrEnum):
     """Actions for Switcher."""
 
-    ON = "ON"
-    OFF = "OFF"
-    SYNC = "SYNC"
+    ON = "On"
+    OFF = "Off"
+    SYNC = "Sync"
 
 
 CHANNEL_A = Channel.A.value
@@ -37,12 +38,29 @@ ACTION_OFF = Action.OFF.value
 ACTION_SYNC = Action.SYNC.value
 
 
-class RfSwitcher(Protocol):
-    """RfSwitcher Class"""
+@dataclass(frozen=True, order=True)
+class SwitcherConfig:
+    """Dataclass for switcher config"""
 
-    switches: list
-    buttons: list
-    binary_sensors: list
+    name: str
+    unique_id: str
+    code_prefix: str
+    service_id: str
+    service_data: dict
+    availability_template: str
+    device_info: DeviceInfo
+
+
+@dataclass(frozen=True, order=True)
+class SwitcherOptions:
+    """Dataclass for switcher options"""
+
+    stateless: bool = False
+
+
+class RfSwitcher(Protocol):
+    """RfSwitcher Protocol Class"""
+
     available: bool
 
     @staticmethod
@@ -50,28 +68,28 @@ class RfSwitcher(Protocol):
         """Returns the icon for switches"""
 
     @property
-    def unique_id(self) -> str:
-        """Return the unique ID of the switch."""
+    def hass(self) -> HomeAssistant:
+        """Return the HA instance"""
 
     @property
-    def availability_template(self) -> Template | None:
-        """Returns availability template."""
+    def unique_id(self) -> str:
+        """Return the unique ID of the switch."""
 
     @property
     def device_info(self) -> DeviceInfo:
         """Returns device info."""
 
-    def get_hass(self) -> HomeAssistant:
-        """Returns hass instance."""
-
-    def get_channel_state(self, channel: str) -> bool:
+    def get_channel_state(self, channel: Channel) -> bool:
         """Get internal state of channel."""
 
-    def handle_action(self, action: str):
+    def handle_action(self, action: Action):
         """Handle action."""
 
-    def update_channel_state(self, channel: str, state: bool):
+    def update_channel_state(self, channel: Channel, state: bool):
         """Update channel state internally."""
 
-    def set_channel_state(self, channel, state: bool):
+    def set_channel_state(self, channel: Channel, state: bool):
         """Set channel state."""
+
+    def get_entities(self, platform: Platform) -> bool:
+        """Return the entities for platform in switcher."""

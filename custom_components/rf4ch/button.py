@@ -2,21 +2,17 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
 import logging
 
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_NAME
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
-from .models import ACTION_SYNC, RfSwitcher
-
-SCAN_INTERVAL = timedelta(seconds=10)
-MIN_TIME_BETWEEN_SCANS = timedelta(seconds=5)
+from .models import ACTION_SYNC, Action, RfSwitcher
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -26,20 +22,22 @@ async def async_setup_entry(
 ):
     """Set up entry."""
     # Setup connection with switcher
-    sid = config_entry.data[CONF_NAME]
-    switcher: RfSwitcher = hass.data[DOMAIN][sid]
+    uid = config_entry.entry_id
+    switcher: RfSwitcher = hass.data[DOMAIN][uid]
 
-    # Add button enitites
-    add_entities(switcher.buttons)
+    _LOGGER.info("Setting up %s for rf4ch with uid: %s", Platform.BUTTON, uid)
+
+    # Add switch enitities
+    add_entities(switcher.get_entities(Platform.BUTTON))
 
 
 class RfButton(ButtonEntity):
     """Rf Button Class"""
 
     _attr_has_entity_name = True
-    _attr_should_poll: bool = False
+    _attr_should_poll = False
 
-    def __init__(self, switcher, action) -> None:
+    def __init__(self, switcher: RfSwitcher, action: Action) -> None:
         self._action = action
         self._switcher: RfSwitcher = switcher
         self._name = action.title()

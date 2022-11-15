@@ -1,0 +1,43 @@
+{
+  "title": "Rf 4 Channel",
+  "config": {
+    "flow_title": "Rf4Ch {name}",
+    "step": {
+      "user": {
+        "data": {
+          "name": "Name",
+          "service_id": "Service Id",
+          "service_data": "Service Data",
+          "code": "Code",
+          "availability": "Availability Template"
+        },
+        "data_description": {
+          "name": "Must be unique within this platform. \nNOTE: Don't add Switcher as suffix.",
+          "service_id": "NOTE: Service must accept code service data variables.",
+          "service_data": "This is optional.",
+          "code": "Thsi will be used as prefix.",
+          "availability": "This is optional."
+        },
+        "description": "Setup configuration for switcher",
+        "title": "Integrate a Rf4Ch Switcher"
+      }
+    },
+    "error": {
+      "unknown": "Unknown error"
+    },
+    "abort": {
+      "already_configured": "Device is already configured"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Rf4Ch Options",
+        "description": "Configure switcher options",
+        "data": {
+          "stateless": "Stateless"
+        }
+      }
+    }
+  }
+}

@@ -2,29 +2,19 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
 import logging
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import STATE_ON, STATE_UNAVAILABLE, STATE_UNKNOWN
+from homeassistant.const import STATE_ON, STATE_UNAVAILABLE, STATE_UNKNOWN, Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
-from .const import (
-    CONF_NAME,
-    DOMAIN,
-    SERVICE_INTERNAL_STATE_OFF,
-    SERVICE_INTERNAL_STATE_ON,
-)
-from .models import RfSwitcher
-
-SCAN_INTERVAL = timedelta(seconds=10)
-MIN_TIME_BETWEEN_SCANS = timedelta(seconds=5)
-
+from .const import DOMAIN
+from .models import Channel, RfSwitcher
+from .services import async_setup_device_services
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,33 +24,23 @@ async def async_setup_entry(
 ):
     """Set up entry."""
     # Setup connection with switcher
-    sid = config_entry.data[CONF_NAME]
-    switcher: RfSwitcher = hass.data[DOMAIN][sid]
+    uid = config_entry.entry_id
+    switcher: RfSwitcher = hass.data[DOMAIN][uid]
+
+    _LOGGER.info("Setting up %s for rf4ch with uid: %s", Platform.SWITCH, uid)
 
     # Add switch enitities
-    add_entities(switcher.switches)
-
-    # Add services
-    platform = entity_platform.async_get_current_platform()
-    platform.async_register_entity_service(
-        SERVICE_INTERNAL_STATE_ON,
-        {},
-        "override_on",
-    )
-    platform.async_register_entity_service(
-        SERVICE_INTERNAL_STATE_OFF,
-        {},
-        "override_off",
-    )
+    add_entities(switcher.get_entities(Platform.SWITCH))
+    async_setup_device_services(hass)
 
 
 class RfSwitch(SwitchEntity, RestoreEntity):
     """RfSwitch Class"""
 
-    _attr_has_entity_name: bool = True
-    _attr_should_poll: bool = False
+    _attr_has_entity_name = True
+    _attr_should_poll = False
 
-    def __init__(self, switcher: RfSwitcher, channel) -> None:
+    def __init__(self, switcher: RfSwitcher, channel: Channel) -> None:
 
         self._channel = channel
         self._switcher = switcher

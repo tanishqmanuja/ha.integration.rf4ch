@@ -6,17 +6,22 @@ Home assistant example cofiguration.yaml
 
 ```yaml
 rf4ch:
-  switchers:
-    - name: kids_room
-      friendly_name: Kids Room
-      code: "10111010100101100100"
-      service: esphome.hub01_rf_bridge_send
-      availability: "{{ is_state('binary_sensor.hub01_status','on') }}"
-    - name: art_room
-      friendly_name: Art Room
-      code: "00001101000110000010"
-      service: esphome.hub01_rf_bridge_send
-      availability: "{{ is_state('binary_sensor.hub01_status','on') and is_state('binary_sensor.node01_status','on')}}"
+  kids_room:
+    name: Kids Room
+    code: "10111010100101100100"
+    service:
+      id: esphome.hub01_rf_bridge_send
+      data:
+        repeat: 6
+    availability: "{{ is_state('binary_sensor.hub01_status','on') }}"
+  art_room:
+    name: Art Room
+    code: "00001101000110000010"
+    service:
+      id: esphome.hub01_rf_bridge_send
+      data:
+        repeat: 6
+    availability: "{{ is_state('binary_sensor.hub01_status','on') and is_state('binary_sensor.node01_status','on')}}"
 ```
 
 ## Physical Hardware

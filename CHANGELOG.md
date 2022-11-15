@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.3.0
+
+#### What's Changed
+
+- Major refactor
+- Support for config flow
+- Stateless option for switcher
+
 ## v0.2.3
 
 ### Changed

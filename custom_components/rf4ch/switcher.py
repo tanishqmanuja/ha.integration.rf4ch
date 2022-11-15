@@ -1,29 +1,18 @@
 """Switcher class for Rf 4 Channel Integration."""
 
+from __future__ import annotations
 
 import logging
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import TemplateError
 from homeassistant.helpers.entity import DeviceInfo, Entity
-from homeassistant.helpers.typing import ConfigType
+from homeassistant.helpers.event import TrackTemplate
+from homeassistant.helpers.template import Template
 
 from .binary_sensor import RfAvailabilityBinarySensor
 from .button import RfButton
-from .const import (
-    CONF_AVAILABILITY,
-    CONF_CODE,
-    CONF_DEVICE_ID,
-    CONF_FRIENDLY_NAME,
-    CONF_NAME,
-    CONF_SERVICE,
-    CONF_UNIQUE_ID,
-    DOMAIN,
-    MANUFACTURER,
-    MODEL,
-    PLATFORMS,
-    SW_VERSION,
-)
+from .const import CONF_AVAILABILITY, Platform
 from .models import (
     ACTION_OFF,
     ACTION_ON,
@@ -34,16 +23,18 @@ from .models import (
     CHANNEL_D,
     Action,
     Channel,
+    SwitcherConfig,
+    SwitcherOptions,
 )
 from .switch import RfSwitch
 
-RF_REPEAT = 6
+from tests.helpers.test_event import async_track_template_result
 
 ICONS = {
-    CHANNEL_A: "mdi:toggle-switch-variant",
-    CHANNEL_B: "mdi:toggle-switch-variant",
-    CHANNEL_C: "mdi:toggle-switch-variant",
-    CHANNEL_D: "mdi:toggle-switch-variant",
+    CHANNEL_A: "mdi:numeric-1-box",
+    CHANNEL_B: "mdi:numeric-2-box",
+    CHANNEL_C: "mdi:numeric-3-box",
+    CHANNEL_D: "mdi:numeric-4-box",
     ACTION_ON: "mdi:power-on",
     ACTION_OFF: "mdi:power-off",
     ACTION_SYNC: "mdi:sync",
@@ -53,61 +44,185 @@ ICONS = {
 _LOGGER = logging.getLogger(__name__)
 
 
+def generate_codes(code_prefix: str):
+    """Returns code dictionary"""
+
+    return {
+        Channel.A: f"{code_prefix}0010",
+        Channel.B: f"{code_prefix}1000",
+        Channel.C: f"{code_prefix}0001",
+        Channel.D: f"{code_prefix}0100",
+        Action.ON: f"{code_prefix}1100",
+        Action.OFF: f"{code_prefix}0011",
+    }
+
+
+class EnitityManager:
+    """Manages Enitities for switcher"""
+
+    def __init__(self):
+        self._entities = {}
+
+    def attach_entity(self, platform: Platform, key: str, entity: Entity):
+        """Attaches entity to manager"""
+        if not isinstance(self._entities.get(platform), dict):
+            self._entities.setdefault(platform, {})
+
+        self._entities[platform][key] = entity
+
+    def get_entity(self, platform: Platform, key: str) -> Entity | None:
+        """Retrieves entity from manager"""
+        return self._entities.get(platform, {}).get(key, None)
+
+    def get_entities(self, platform: Platform) -> list[Entity] | None:
+        """Retrieves list of entities from manager"""
+        return self._entities.get(platform, {}).values()
+
+    def mark_for_update(self, platform: Platform, key: str):
+        """Mark for HA state update"""
+        entity = self.get_entity(platform, key)
+        if entity.hass is None:
+            return
+        entity.schedule_update_ha_state()
+
+
+class SwitcherStateManager:
+    """Class to manage switcher state"""
+
+    def __init__(self):
+        setattr(self, Channel.A, False)
+        setattr(self, Channel.B, False)
+        setattr(self, Channel.C, False)
+        setattr(self, Channel.D, False)
+
+    def get_state(self, channel: Channel):
+        """Returns the state of a channel"""
+        return getattr(self, channel)
+
+    def set_state(self, channel: Channel, state: bool):
+        """Updates the state of a channel"""
+        setattr(self, channel, state)
+
+
 class RfSwitcher:
     """RfSwitcher Class"""
 
     def __init__(
-        self, hass: HomeAssistant, config: ConfigType, entry: ConfigEntry
+        self, hass: HomeAssistant, config: SwitcherConfig, options: SwitcherOptions
     ) -> None:
-        self._config = config
-        self._config_entry = entry
         self._hass = hass
-        self._service = config[CONF_SERVICE]
-        self._repeat = RF_REPEAT
-        self._code_prefix = config[CONF_CODE]
-        self._channels = [c.value for c in Channel]
-        self._actions = [a.value for a in Action]
-        self._codes = {
-            CHANNEL_A: f"{self._code_prefix}0010",
-            CHANNEL_B: f"{self._code_prefix}1000",
-            CHANNEL_C: f"{self._code_prefix}0001",
-            CHANNEL_D: f"{self._code_prefix}0100",
-            ACTION_ON: f"{self._code_prefix}1100",
-            ACTION_OFF: f"{self._code_prefix}0011",
-        }
-        self._states = {c: False for c in self._channels}
+
+        self._config = config
+        self._options = options
+        self._codes = generate_codes(config.code_prefix)
+        self._state_manager = SwitcherStateManager()
+        self._entity_manager = EnitityManager()
         self._available = True
-        self._name = config[CONF_NAME]
-        self._friendly_name = config[CONF_FRIENDLY_NAME]
-        self._unique_id = config[CONF_UNIQUE_ID]
-        self._device_id = config[CONF_DEVICE_ID]
 
-        self._availability_template = config.get(CONF_AVAILABILITY)
-        self._manufacturer = MANUFACTURER
-        self._model = MODEL
-        self._sw_version = SW_VERSION
-
-        self.switches = [RfSwitch(self, channel) for channel in self._channels]
-        self.buttons = [RfButton(self, action) for action in self._actions]
-        self.binary_sensors = []
-
-        if self._availability_template:
-            self.binary_sensors.append(
-                RfAvailabilityBinarySensor(self, CONF_AVAILABILITY)
+        for channel in Channel:
+            self._entity_manager.attach_entity(
+                platform=Platform.SWITCH,
+                key=channel,
+                entity=RfSwitch(switcher=self, channel=channel),
             )
 
-    async def async_setup(self, tries=0):
-        "Setup Switcher Platforms"
-
-        hass = self._hass
-
-        hass.async_create_task(
-            hass.config_entries.async_forward_entry_setups(
-                self._config_entry, PLATFORMS
+        for action in Action:
+            self._entity_manager.attach_entity(
+                platform=Platform.BUTTON,
+                key=action,
+                entity=RfButton(switcher=self, action=action),
             )
-        )
 
+        if self._config.availability_template:
+            _LOGGER.info(
+                "Template found for %s Switcher: %s",
+                self._config.name,
+                self._config.availability_template,
+            )
+            self._availability_template = Template(config.availability_template, hass)
+
+            self._entity_manager.attach_entity(
+                platform=Platform.BINARY_SENSOR,
+                key=CONF_AVAILABILITY,
+                entity=RfAvailabilityBinarySensor(self, CONF_AVAILABILITY),
+            )
+
+            _LOGGER.info(
+                "Registering availability tracker %s Switcher", self._config.name
+            )
+            self._async_track_availability()
+
+    async def setup(self):
+        """Setups the async inits of switcher"""
+        if self._config.availability_template:
+            await self._initial_template_render()
         return True
+
+    async def _async_on_remove(self):
+        """Cleanup for switcher on removal"""
+        return True
+
+    async def _initial_template_render(self):
+        """Update the state for template in switcher."""
+        for property_name, template in (("available", self._availability_template),):
+            if template is None:
+                continue
+
+            try:
+                value = template.async_render()
+                if property_name == "available":
+                    value = bool(value)
+                setattr(self, property_name, value)
+            except TemplateError as ex:
+                friendly_property_name = property_name[1:].replace("_", " ")
+                if ex.args and ex.args[0].startswith(
+                    "UndefinedError: 'None' has no attribute"
+                ):
+                    # Common during HA startup - so just a warning
+                    _LOGGER.warning(
+                        "Could not render %s template %s, the state is unknown",
+                        friendly_property_name,
+                        self._config.name,
+                    )
+                    return
+
+                try:
+                    setattr(self, property_name, getattr(super(), property_name))
+                except AttributeError:
+                    _LOGGER.error(
+                        "Could not render %s template %s: %s",
+                        friendly_property_name,
+                        self._config.name,
+                        ex,
+                    )
+
+    def _async_track_availability(self):
+        """Track availability."""
+
+        @callback
+        def _async_on_template_update(event, updates):
+            """Update ha state when dependencies update."""
+
+            result = updates.pop().result
+
+            if isinstance(result, TemplateError):
+                self._available = None
+            else:
+                self.available = bool(result)
+
+            # if event:
+            #     self.async_set_context(event.context)
+
+            # self.async_schedule_update_ha_state(True)
+            self._entity_manager.mark_for_update(
+                platform=Platform.BINARY_SENSOR, key=CONF_AVAILABILITY
+            )
+
+        async_track_template_result(
+            hass=self._hass,
+            track_templates=[TrackTemplate(self._availability_template, None)],
+            action=_async_on_template_update,
+        )
 
     @staticmethod
     def get_icon(channel_or_action):
@@ -115,14 +230,14 @@ class RfSwitcher:
         return ICONS.get(channel_or_action)
 
     @property
-    def unique_id(self) -> str:
-        """Return the unique ID of the switch."""
-        return self._unique_id
+    def hass(self) -> HomeAssistant:
+        """Return the HA instance"""
+        return self._hass
 
     @property
-    def availability_template(self):
-        """Returns availability template."""
-        return self._availability_template
+    def unique_id(self) -> str:
+        """Return the unique ID of the switch."""
+        return self._config.unique_id
 
     @property
     def available(self) -> bool:
@@ -135,75 +250,67 @@ class RfSwitcher:
             return
 
         self._available = state
-        for switch in self.switches:
-            switch.schedule_update_ha_state()
-        for button in self.buttons:
-            button.schedule_update_ha_state()
+        for channel in Channel:
+            self._entity_manager.mark_for_update(Platform.SWITCH, channel)
+        for action in Action:
+            self._entity_manager.mark_for_update(Platform.BUTTON, action)
 
     @property
     def device_info(self) -> DeviceInfo:
-        """Returns device info."""
+        """Returns device info of the switcher."""
+        return self._config.device_info
 
-        return DeviceInfo(
-            identifiers={
-                # Serial numbers are unique identifiers within a specific domain
-                (DOMAIN, self._device_id)
-            },
-            name=f"{self._friendly_name} Switcher",
-            manufacturer=self._manufacturer,
-            model=self._model,
-            sw_version=self._sw_version,
-        )
+    def set_options(self, options: SwitcherOptions) -> None:
+        """Setter for switcher options."""
+        if self._options.stateless != options.stateless:
+            for channel in Channel:
+                self.update_channel_state(channel=channel, state=False)
 
-    def get_hass(self) -> HomeAssistant:
-        """Returns hass instance."""
-        return self._hass
+        self._options = options
 
-    def send_rf(self, code):
-        """Call service to send rf code."""
-        serv = self._service.split(".")
-        self._hass.services.call(
-            serv[0], serv[1], {"code": self._codes[code], "repeat": self._repeat}
-        )
+    def get_entities(self, platform: Platform) -> bool:
+        """Return the entities for platform in switcher."""
+        return self._entity_manager.get_entities(platform=platform)
 
-    def update_channel_state(self, channel, state: bool):
+    def update_channel_state(self, channel, state: bool) -> None:
         """Update channel state internally."""
-        self._states[channel] = state
-        switch = self.switches[self._channels.index(channel)]
-        switch.schedule_update_ha_state()
+        if not self._options.stateless:
+            self._state_manager.set_state(channel=channel, state=state)
+            self._entity_manager.mark_for_update(platform=Platform.SWITCH, key=channel)
 
-    def set_channel_state(self, channel, state: bool):
+    def get_channel_state(self, channel) -> bool:
+        """Get internal state of channel."""
+        return self._state_manager.get_state(channel=channel)
+
+    def set_channel_state(self, channel, state: bool) -> None:
         """Set channel state."""
-        if self._states[channel] != state:
+        if self.get_channel_state(channel=channel) != state:
             self.update_channel_state(channel, state)
-            self.send_rf(channel)
+            self._send_rf(channel)
 
-    def handle_action(self, action):
+    def handle_action(self, action) -> None:
         """Handle action."""
         if action == ACTION_SYNC:
-            self.sync()
+            self._sync()
         elif action in (ACTION_ON, ACTION_OFF):
-            self.send_rf(action)
+            self._send_rf(action)
             state = action == ACTION_ON
-            for channel in self._channels:
-                self._states[channel] = state
-            for switch in self.switches:
-                self._mark_for_update(switch)
+            for channel in Channel:
+                self.update_channel_state(channel=channel, state=state)
 
-    def get_channel_state(self, channel):
-        """Get internal state of channel."""
-        return self._states[channel]
-
-    def sync(self):
+    def _sync(self) -> None:
         """Reset and sync channel states."""
-        self.send_rf("OFF")
-        for channel, state in self._states.items():
-            if channel in self._channels and state is True:
-                self.send_rf(channel)
+        self._send_rf(Action.OFF)
+        for channel in Channel:
+            if self.get_channel_state(channel) is True:
+                self._send_rf(code=channel)
 
-    def _mark_for_update(self, entity: Entity):
-        """Mark for HA state update"""
-        if entity.hass is None:
-            return
-
-        entity.schedule_update_ha_state()
+    def _send_rf(self, code) -> None:
+        """Call service to send rf code."""
+        code = self._codes[code]
+        domain, service = self._config.service_id.split(".")
+        service_data = {"code": code, **self._config.service_data}
+        _LOGGER.info("Sending Code %s via %s.%s", code, domain, service)
+        self._hass.services.call(
+            domain=domain, service=service, service_data=service_data
+        )
