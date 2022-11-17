@@ -16,11 +16,12 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       - uses: actions/checkout@v2
-      - uses: tanishqmanuja/gh-action-auto-release@v1.0.3
+      - uses: tanishqmanuja/gh-action-auto-release@v1.0.5
         with:
           title: "Release: $version"
           tag: "v$semver"
           draft: false
           regex: "/^Release: #{semver}$/i"
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
