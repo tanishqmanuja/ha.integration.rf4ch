@@ -11,7 +11,7 @@ from homeassistant.const import (  # noqa: F401 # pylint: disable=unused-import
     CONF_UNIQUE_ID,
     Platform,
 )
-from homeassistant.helpers.template_entity import (  # noqa: F401 # pylint: disable=unused-import
+from homeassistant.helpers.trigger_template_entity import (  # noqa: F401 # pylint: disable=unused-import
     CONF_AVAILABILITY,
 )
 
