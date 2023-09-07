@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.3.4
+
+#### What's Changed
+
+- Fix TemplateEntity Imports
+
 ## v0.3.3
 
 #### What's Changed
