@@ -1,8 +1,10 @@
 {
   "domain": "rf4ch",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "RF Four Channel",
-  "codeowners": ["@tanishqmanuja"],
+  "codeowners": [
+    "@tanishqmanuja"
+  ],
   "dependencies": [],
   "documentation": "https://github.com/tanishqmanuja/ha.integration.rf4ch",
   "issue_tracker": "https://github.com/tanishqmanuja/ha.integration.rf4ch/issues",
