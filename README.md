@@ -4,7 +4,7 @@ Home Assistant integration to control my basic of the shelf Four Channel RF Swit
 
 ## ⚙️ Configuration
 
-Add the following to your configuration.yaml file.
+Example snippet for configuration.yaml file.
 
 ```yaml
 rf4ch:
@@ -38,6 +38,8 @@ rf4ch:
 ```
 
 ## 🌐 ESPHome API Service
+
+This is how I expose a RF Bridge service to Home Assistant.
 
 ```yaml
 api:
