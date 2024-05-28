@@ -1,4 +1,4 @@
-# RF Four Channel
+# Rf4Ch //RF Four Channel
 
 Home Assistant integration to control my basic of the shelf Four Channel RF Switchers easily.
 
