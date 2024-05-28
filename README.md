@@ -1,5 +1,7 @@
 # RF Four Channel
 
+Home Assistant integration to control my basic of the shelf Four Channel RF Switchers easily.
+
 ## ⚙️ Configuration
 
 Add the following to your configuration.yaml file.
