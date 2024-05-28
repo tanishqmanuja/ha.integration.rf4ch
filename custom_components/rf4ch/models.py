@@ -1,95 +1,50 @@
-"""Models for Rf 4 Channel Integration."""
+"""Data Models for RF Four Channel Integration."""
 
-from __future__ import annotations
-
-from dataclasses import dataclass
 from typing import Protocol
 
-from homeassistant.backports.enum import StrEnum
-from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity import Entity
 
-
-class Channel(StrEnum):
-    """Output channels for Switcher."""
-
-    A = "Ch1"
-    B = "Ch2"
-    C = "Ch3"
-    D = "Ch4"
-
-
-class Action(StrEnum):
-    """Actions for Switcher."""
-
-    ON = "On"
-    OFF = "Off"
-    SYNC = "Sync"
-
-
-CHANNEL_A = Channel.A.value
-CHANNEL_B = Channel.B.value
-CHANNEL_C = Channel.C.value
-CHANNEL_D = Channel.D.value
-
-ACTION_ON = Action.ON.value
-ACTION_OFF = Action.OFF.value
-ACTION_SYNC = Action.SYNC.value
-
-
-@dataclass(frozen=True, order=True)
-class SwitcherConfig:
-    """Dataclass for switcher config"""
-
-    name: str
-    unique_id: str
-    code_prefix: str
-    service_id: str
-    service_data: dict
-    availability_template: str
-    device_info: DeviceInfo
-
-
-@dataclass(frozen=True, order=True)
-class SwitcherOptions:
-    """Dataclass for switcher options"""
-
-    stateless: bool = False
+from .lib.switcher import SwitcherAction, SwitcherChannel
 
 
 class RfSwitcher(Protocol):
-    """RfSwitcher Protocol Class"""
-
-    available: bool
-
-    @staticmethod
-    def get_icon(icon: str) -> str:
-        """Returns the icon for switches"""
+    """Protocol for RF Switcher."""
 
     @property
-    def hass(self) -> HomeAssistant:
-        """Return the HA instance"""
+    def name(self) -> str:
+        """Return unique ID."""
 
     @property
     def unique_id(self) -> str:
-        """Return the unique ID of the switch."""
+        """Return unique ID."""
 
     @property
-    def device_info(self) -> DeviceInfo:
-        """Returns device info."""
+    def device_info(self) -> dict[str, str]:
+        """Return device info."""
 
-    def get_channel_state(self, channel: Channel) -> bool:
-        """Get internal state of channel."""
+    @property
+    def available(self) -> bool:
+        """Return availability."""
 
-    def handle_action(self, action: Action):
-        """Handle action."""
+    def get_entities_for_platform(self, platform: str) -> list[Entity]:
+        """Get entities for platform."""
 
-    def update_channel_state(self, channel: Channel, state: bool):
-        """Update channel state internally."""
+    def get_channel(self, channel: SwitcherChannel) -> bool:
+        """Get channel state."""
 
-    def set_channel_state(self, channel: Channel, state: bool):
+    def set_channel(
+        self, channel: SwitcherChannel, state: bool, only_internal: bool = False
+    ):
         """Set channel state."""
 
-    def get_entities(self, platform: Platform) -> bool:
-        """Return the entities for platform in switcher."""
+    def turn_on_all(self):
+        """Turn on all channels."""
+
+    def turn_off_all(self):
+        """Turn off all channels."""
+
+    def sync_channels(self):
+        """Sync channels."""
+
+    def handle_action(self, action: SwitcherAction):
+        """Handle action."""

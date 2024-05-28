@@ -1,1 +1,11 @@
-.vscode
+# Cache
+__pycache__/
+
+# Dependencies
+node_modules/
+
+# Lockfiles
+bun.lockb
+
+# Env
+.env

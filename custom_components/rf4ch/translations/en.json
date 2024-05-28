@@ -1,40 +1,35 @@
 {
-  "title": "Rf 4 Channel",
   "config": {
-    "flow_title": "Rf4Ch {name}",
     "step": {
       "user": {
+        "title": "Setup switcher device",
         "data": {
-          "name": "Name",
-          "service_id": "Service Id",
+          "name": "Device Name",
+          "service_id": "Service ID",
           "service_data": "Service Data",
-          "code": "Code",
-          "availability": "Availability Template"
-        },
-        "data_description": {
-          "name": "Must be unique within this platform. \nNOTE: Don't add Switcher as suffix.",
-          "service_id": "NOTE: Service must accept code service data variables.",
-          "service_data": "This is optional.",
-          "code": "Thsi will be used as prefix.",
-          "availability": "This is optional."
-        },
-        "description": "Setup configuration for switcher",
-        "title": "Integrate a Rf4Ch Switcher"
+          "availability_template": "Availability Template"
+        }
+      },
+      "code": {
+        "title": "Setup switcher RF code",
+        "data": {
+          "code_prefix": "Code Prefix",
+          "code_channel_a": "Code for Channel A",
+          "code_channel_b": "Code for Channel B",
+          "code_channel_c": "Code for Channel C",
+          "code_channel_d": "Code for Channel D",
+          "code_channel_on": "Code for On",
+          "code_channel_off": "Code for Off"
+        }
       }
-    },
-    "error": {
-      "unknown": "Unknown error"
-    },
-    "abort": {
-      "already_configured": "Device is already configured"
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Rf4Ch Options",
-        "description": "Configure switcher options",
+        "title": "Configure switcher options",
         "data": {
+          "availability_template": "Availability Template",
           "stateless": "Stateless"
         }
       }

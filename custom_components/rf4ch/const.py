@@ -1,4 +1,4 @@
-"""Constants for Rf 4 Channel Integration."""
+"""Constants for RF Four Channel integration."""
 
 from homeassistant.const import (  # noqa: F401 # pylint: disable=unused-import
     CONF_CODE,
@@ -11,20 +11,27 @@ from homeassistant.const import (  # noqa: F401 # pylint: disable=unused-import
     CONF_UNIQUE_ID,
     Platform,
 )
-from homeassistant.helpers.trigger_template_entity import (  # noqa: F401 # pylint: disable=unused-import
-    CONF_AVAILABILITY,
-)
 
 DOMAIN = "rf4ch"
-PLATFORMS = [Platform.BINARY_SENSOR, Platform.BUTTON, Platform.SWITCH]
+PLATFORMS = [Platform.BUTTON, Platform.SWITCH]
 
-CONF_OPTIONS = "options"
+CONF_AVAILABILITY_TEMPLATE = "availability_template"
 CONF_STATELESS = "stateless"
+CONF_OPTIONS = "options"
 
+CONF_CODE_A = "channel_a"
+CONF_CODE_B = "channel_b"
+CONF_CODE_C = "channel_c"
+CONF_CODE_D = "channel_d"
+CONF_CODE_ON = "channel_on"
+CONF_CODE_OFF = "channel_off"
+CONF_CODE_PREFIX = "prefix"
+
+SERVICE_DUMMY_RF_SEND = "dummy_rf_send"
 SERVICE_INTERNAL_STATE_ON = "internal_state_on"
 SERVICE_INTERNAL_STATE_OFF = "internal_state_off"
 
 MANUFACTURER = "TMLabs, Inc"
-MODEL = "4 Channel Rf Switcher"
+MODEL = "Four Channel Rf Switcher"
 SW_VERSION = "1.0.0"
 HW_VERSION = "1.0.0"

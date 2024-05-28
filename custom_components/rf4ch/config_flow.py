@@ -1,7 +1,7 @@
-"""Config flow to configure Rf 4 Channel Integration."""
+"""Config Flow for RF Four Channel integration."""
 
-from copy import copy
 import logging
+from typing import Any
 
 import voluptuous as vol
 
@@ -11,13 +11,20 @@ from homeassistant.helpers import selector
 from homeassistant.util import slugify
 
 from .const import (
-    CONF_AVAILABILITY,
+    CONF_AVAILABILITY_TEMPLATE,
     CONF_CODE,
+    CONF_CODE_A,
+    CONF_CODE_B,
+    CONF_CODE_C,
+    CONF_CODE_D,
+    CONF_CODE_OFF,
+    CONF_CODE_ON,
+    CONF_CODE_PREFIX,
     CONF_ID,
     CONF_NAME,
-    CONF_OPTIONS,
     CONF_SERVICE,
     CONF_SERVICE_DATA,
+    CONF_STATELESS,
     CONF_UNIQUE_ID,
     DOMAIN,
 )
@@ -25,74 +32,64 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-CONF_STATELESS = "stateless"
+CODE_SCHEMA = vol.Schema(
+    {
+        vol.Required(f"{CONF_CODE}_{CONF_CODE_PREFIX}"): selector.TextSelector(),
+        vol.Required(
+            f"{CONF_CODE}_{CONF_CODE_A}", default="0010"
+        ): selector.TextSelector(),
+        vol.Required(
+            f"{CONF_CODE}_{CONF_CODE_B}", default="1000"
+        ): selector.TextSelector(),
+        vol.Required(
+            f"{CONF_CODE}_{CONF_CODE_C}", default="0001"
+        ): selector.TextSelector(),
+        vol.Required(
+            f"{CONF_CODE}_{CONF_CODE_D}", default="0100"
+        ): selector.TextSelector(),
+        vol.Required(
+            f"{CONF_CODE}_{CONF_CODE_ON}", default="1100"
+        ): selector.TextSelector(),
+        vol.Required(
+            f"{CONF_CODE}_{CONF_CODE_OFF}", default="0011"
+        ): selector.TextSelector(),
+    }
+)
 
 
-def _data_schema(services: list):
+def _create_data_schema(services: list):
     return vol.Schema(
         {
-            vol.Required(
-                CONF_NAME, description={"suggested_value": "My Room"}
-            ): selector.TextSelector(),
+            vol.Required(CONF_NAME, default="RF Switcher"): selector.TextSelector(),
             vol.Required(f"{CONF_SERVICE}_{CONF_ID}"): selector.SelectSelector(
                 {"options": services, "mode": selector.SelectSelectorMode.DROPDOWN}
             ),
             vol.Optional(
                 f"{CONF_SERVICE}_{CONF_SERVICE_DATA}"
             ): selector.ObjectSelector(),
-            vol.Required(CONF_CODE): selector.TextSelector(),
-            vol.Optional(CONF_AVAILABILITY): selector.TemplateSelector(),
+            vol.Optional(CONF_AVAILABILITY_TEMPLATE): selector.TemplateSelector(),
         }
     )
 
 
-async def parse_input(hass: HomeAssistant, cfg):
-    """Validate the user input allows us to connect.
-    Data has the keys from DATA_SCHEMA with values provided by the user.
-    """
-
-    name = cfg[CONF_NAME]
-    uid = slugify(name)
-    title = f"{name} Switcher".title()
-
-    data = copy(cfg)
-    data[CONF_UNIQUE_ID] = uid
-    data[CONF_SERVICE] = {
-        CONF_ID: cfg[f"{CONF_SERVICE}_{CONF_ID}"],
-        CONF_SERVICE_DATA: cfg.get(f"{CONF_SERVICE}_{CONF_SERVICE_DATA}"),
-    }
-
-    delete_keys = set(
-        [f"{CONF_SERVICE}_{CONF_ID}", f"{CONF_SERVICE}_{CONF_SERVICE_DATA}"]
-    ).intersection(set(data.keys()))
-    for key in delete_keys:
-        del data[key]
-
-    # Return info that you want to store in the config entry.
-    return {"title": title, "uid": uid, "data": data}
-
-
 async def _get_service_list(hass: HomeAssistant):
-    """Return list of services"""
+    """Return list of services."""
     services_dict = hass.services.async_services()
 
-    service_list = []
+    return [
+        f"{provider}.{name}"
+        for provider, services in services_dict.items()
+        if isinstance(services, dict)
+        for name in services
+    ]
 
-    for provider, services in services_dict.items():
-        if isinstance(services, dict):
-            for name in services.keys():
-                service_list.append(f"{provider}.{name}")
-    return service_list
 
-
-class Rf4ChFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for Rf4Ch Integration."""
+class RfConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """Handle a config flow for RF Four Channel."""
 
     VERSION = 1
 
-    def __init__(self):
-        """Initialize the Rf4Ch config flow."""
-        self.discovered_conf = {}
+    data = {}
 
     @staticmethod
     @callback
@@ -100,61 +97,84 @@ class Rf4ChFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         """Get the options flow for this handler."""
         return OptionsFlowHandler(config_entry)
 
-    async def async_step_user(self, user_input=None):
-        """Handle the initial step."""
-        errors = {}
-        info = None
+    async def async_step_user(self, user_input: dict[str, Any] | None = None):
+        """Handle flow initiated by user."""
+        services = await _get_service_list(self.hass)
 
         if user_input is not None:
-            try:
-                info = await parse_input(self.hass, user_input)
-            except Exception:  # pylint: disable=broad-except
-                _LOGGER.exception("Unexpected exception")
-                errors["base"] = "unknown"
+            _LOGGER.debug("step user input: %s", user_input)
 
-            if not errors:
-                await self.async_set_unique_id(info["uid"], raise_on_progress=False)
-                self._abort_if_unique_id_configured()
-                return self.async_create_entry(title=info["title"], data=info["data"])
+            # reset data
+            self.data = {}
 
-        services = await _get_service_list(self.hass)
+            self.data[CONF_UNIQUE_ID] = slugify(user_input[CONF_NAME])
+            self.data[CONF_NAME] = user_input[CONF_NAME]
+            self.data[CONF_SERVICE] = {
+                CONF_ID: user_input[f"{CONF_SERVICE}_{CONF_ID}"],
+                CONF_SERVICE_DATA: user_input.get(
+                    f"{CONF_SERVICE}_{CONF_SERVICE_DATA}", {}
+                ),
+            }
+
+            if CONF_AVAILABILITY_TEMPLATE in user_input:
+                self.data[CONF_AVAILABILITY_TEMPLATE] = user_input[
+                    CONF_AVAILABILITY_TEMPLATE
+                ]
+
+            return await self.async_step_code()
 
         return self.async_show_form(
             step_id="user",
-            data_schema=_data_schema(services),
-            errors=errors,
+            data_schema=_create_data_schema(services),
         )
 
-    async def async_step_import(self, import_config: dict):
-        """Setup step import for config flow."""
-        cfg = import_config
-        opts = import_config.pop(CONF_OPTIONS, {})
-        device_name = cfg[CONF_NAME]
-        title = f"{device_name} Switcher".title()
+    async def async_step_code(self, user_input: dict[str, Any] | None = None):
+        """Handle code step."""
 
-        await self.async_set_unique_id(cfg[CONF_UNIQUE_ID])
-        return self.async_create_entry(title=title, data=cfg, options=opts)
+        if user_input is not None:
+            _LOGGER.debug("step code input: %s", user_input)
+
+            self.data[CONF_CODE] = {
+                CONF_CODE_PREFIX: user_input.get(f"{CONF_CODE}_{CONF_CODE_PREFIX}"),
+                CONF_CODE_A: user_input[f"{CONF_CODE}_{CONF_CODE_A}"],
+                CONF_CODE_B: user_input[f"{CONF_CODE}_{CONF_CODE_B}"],
+                CONF_CODE_C: user_input[f"{CONF_CODE}_{CONF_CODE_C}"],
+                CONF_CODE_D: user_input[f"{CONF_CODE}_{CONF_CODE_D}"],
+                CONF_CODE_ON: user_input[f"{CONF_CODE}_{CONF_CODE_ON}"],
+                CONF_CODE_OFF: user_input[f"{CONF_CODE}_{CONF_CODE_OFF}"],
+            }
+
+            return self.async_create_entry(title=self.data[CONF_NAME], data=self.data)
+
+        return self.async_show_form(
+            step_id="code",
+            data_schema=CODE_SCHEMA,
+        )
+
+    async def async_step_import(self, config):
+        """Handle step import."""
+
+        await self.async_set_unique_id(config[CONF_UNIQUE_ID])
+        return self.async_create_entry(title=config[CONF_NAME], data=config)
 
 
 class OptionsFlowHandler(config_entries.OptionsFlow):
-    """Handle a option flow for isy994."""
+    """Handle options flow."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
         self.config_entry = config_entry
 
     async def async_step_init(self, user_input=None):
-        """Handle options flow."""
+        """Manage the options."""
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
-        options = self.config_entry.options
-        stateless = options.get(CONF_STATELESS)
+        options = {
+            vol.Required(
+                CONF_STATELESS,
+                default=self.config_entry.options.get(CONF_STATELESS, False),
+            ): bool,
+        }
 
-        options_schema = vol.Schema(
-            {
-                vol.Required(CONF_STATELESS, default=stateless): bool,
-            }
-        )
-
-        return self.async_show_form(step_id="init", data_schema=options_schema)
+        return self.async_show_form(step_id="init", data_schema=vol.Schema(options))

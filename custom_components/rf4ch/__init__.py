@@ -1,8 +1,6 @@
-"""Integration Component for Rf 4 Channel Integration."""
+"""RF Four Channel integration."""
 
-from __future__ import annotations
-
-from copy import copy
+import json
 import logging
 
 import voluptuous as vol
@@ -12,47 +10,13 @@ from homeassistant.core import HomeAssistant
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
-from .const import (
-    CONF_AVAILABILITY,
-    CONF_CODE,
-    CONF_ID,
-    CONF_NAME,
-    CONF_OPTIONS,
-    CONF_SERVICE,
-    CONF_SERVICE_DATA,
-    CONF_STATELESS,
-    CONF_UNIQUE_ID,
-    DOMAIN,
-    PLATFORMS,
-)
-from .helpers import (
-    generate_switcher_conf_from_entry,
-    generate_switcher_opts_from_entry,
-    get_switcher_confs_from_domain_conf,
-    switcher_conf_to_entry_data,
-)
+from . import helpers
+from .const import CONF_UNIQUE_ID, DOMAIN, PLATFORMS
+from .schema import SWITCHER_CONFIG_SCHEMA
+from .services import async_setup_dummy_rf_send_service
 from .switcher import RfSwitcher
 
 _LOGGER = logging.getLogger(__name__)
-
-SERVICE_CONFIG_SCHEMA = vol.Schema(
-    {
-        vol.Required(CONF_ID): cv.service,
-        vol.Optional(CONF_SERVICE_DATA): vol.Schema({}, extra=vol.ALLOW_EXTRA),
-    }
-)
-
-SWITCHER_OPTIONS_SCHEMA = vol.Schema({vol.Optional(CONF_STATELESS): cv.boolean})
-
-SWITCHER_CONFIG_SCHEMA = vol.Schema(
-    {
-        vol.Required(CONF_NAME): cv.string,
-        vol.Required(CONF_SERVICE): SERVICE_CONFIG_SCHEMA,
-        vol.Required(CONF_CODE): cv.string,
-        vol.Optional(CONF_AVAILABILITY): cv.template,
-        vol.Optional(CONF_OPTIONS): SWITCHER_OPTIONS_SCHEMA,
-    }
-)
 
 CONFIG_SCHEMA = vol.Schema(
     {DOMAIN: cv.schema_with_slug_keys(SWITCHER_CONFIG_SCHEMA)},
@@ -61,102 +25,113 @@ CONFIG_SCHEMA = vol.Schema(
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Set up the Rf 4 Channel integration from YAML"""
+    """Set up the RF Four Channel Integration using Config."""
 
-    rf4ch_conf = config.get(DOMAIN)
-    hass.data.setdefault(DOMAIN, {})
-
-    if not rf4ch_conf:
+    if DOMAIN not in config:
         return True
 
-    switcher_confs = get_switcher_confs_from_domain_conf(rf4ch_conf)
+    # Register our services with Home Assistant.
+    async_setup_dummy_rf_send_service(hass)
 
-    if len(switcher_confs) < 1:
-        return True
+    # Delete redundant exisiting entries
+    for entry in hass.config_entries.async_entries(DOMAIN):
+        if entry.source == SOURCE_USER:
+            continue
+        if entry.source == SOURCE_IMPORT and next(
+            (
+                config_entry
+                for unique_id, config_entry in config[DOMAIN].items()
+                if unique_id == entry.data[CONF_UNIQUE_ID]
+            ),
+            None,
+        ):
+            continue
 
-    # Delete specific entries that no longer exist in the config
-    if hass.config_entries.async_entries(DOMAIN):
-        for entry in hass.config_entries.async_entries(DOMAIN):
-            remove = True
-            for switcher_conf in switcher_confs:
-                if entry.source == SOURCE_USER:
-                    remove = False
-                    break
+        _LOGGER.debug("Cleaning up %s", entry.data[CONF_UNIQUE_ID])
+        await hass.config_entries.async_remove(entry.entry_id)
 
-                if (
-                    entry.source == SOURCE_IMPORT
-                    and entry.data[CONF_UNIQUE_ID] == switcher_conf[CONF_UNIQUE_ID]
-                ):
-                    remove = False
-                    break
+    # Add new entries or update existing ones
+    def _are_same_entries(user_config_entry, hass_config_entry):
+        a = helpers.normalise_config_entry(user_config_entry)
+        b = hass_config_entry  # Mapping proxy canot be normalised
 
-            if remove:
-                await hass.config_entries.async_remove(entry.entry_id)
+        keys = set(a.keys()).intersection(set(b.keys()))
 
-    # Setup new entries and update old entries
-    for switcher_conf in switcher_confs:
-        # copy to prevent mutation
-        switcher_cfg = copy(switcher_conf)
+        return hash(json.dumps({k: a[k] for k in keys}, sort_keys=True)) == hash(
+            json.dumps({k: b[k] for k in keys}, sort_keys=True)
+        )
 
-        existing_entry = False
-        for entry in hass.config_entries.async_entries(DOMAIN):
-            if switcher_cfg[CONF_UNIQUE_ID] == entry.data[CONF_UNIQUE_ID]:
-                existing_entry = True
-                switcher_cfg[CONF_NAME] = entry.data[CONF_NAME]
-                hass.config_entries.async_update_entry(
-                    entry, data=switcher_conf_to_entry_data(switcher_cfg)
-                )
-                break
-        if not existing_entry:
+    for unique_id, config_entry in config[DOMAIN].items():
+        _found = next(
+            (
+                entry
+                for entry in hass.config_entries.async_entries(DOMAIN)
+                if entry.data[CONF_UNIQUE_ID] == unique_id
+            ),
+            None,
+        )
+
+        if _found:
+            _LOGGER.debug("Found existing entry %s", unique_id)
+
+        if _found and not _are_same_entries(config_entry, _found.data):
+            data = helpers.normalise_config_entry(config_entry)
+            data[CONF_UNIQUE_ID] = unique_id
+
+            _LOGGER.debug("Updating %s, %s", unique_id, data)
+            hass.config_entries.async_update_entry(
+                _found,
+                data=data,
+            )
+
+        if not _found:
+            data = helpers.normalise_config_entry(config_entry)
+            data[CONF_UNIQUE_ID] = unique_id
+
+            _LOGGER.debug("Adding %s, %s", unique_id, data)
             hass.async_create_task(
                 hass.config_entries.flow.async_init(
                     DOMAIN,
                     context={"source": SOURCE_IMPORT},
-                    data=switcher_conf_to_entry_data(switcher_cfg),
+                    data=data,
                 )
             )
 
     return True
 
 
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
-    """Set up a switcher from a config entry."""
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Set up RF Four Channel from a config entry."""
     if DOMAIN not in hass.data:
         hass.data.setdefault(DOMAIN, {})
 
-    _LOGGER.debug(
-        "Setting up rf4ch id %s, name %s, config %s",
-        config_entry.entry_id,
-        config_entry.data[CONF_NAME],
-        config_entry.data,
+    switcher = RfSwitcher(
+        hass,
+        helpers.generate_switcher_config(entry),
+        helpers.generate_switcher_options(entry),
     )
+    await switcher.async_added_to_hass()
 
-    # Setup switcher
+    hass.data[DOMAIN][entry.entry_id] = switcher
 
-    switcher_config = generate_switcher_conf_from_entry(config_entry)
-    switcher_opts = generate_switcher_opts_from_entry(config_entry)
-    switcher = RfSwitcher(hass=hass, config=switcher_config, options=switcher_opts)
-    await switcher.setup()
-    hass.data[DOMAIN][config_entry.entry_id] = switcher
-
-    hass.async_create_task(
-        hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
-    )
-
-    config_entry.async_on_unload(config_entry.add_update_listener(update_listener))
+    # Setup platforms
+    hass.create_task(hass.config_entries.async_forward_entry_setups(entry, PLATFORMS))
+    # Add Update Listener
+    entry.async_on_unload(entry.add_update_listener(async_update_listener))
 
     return True
 
 
-async def update_listener(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
+async def async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Handle options update."""
-    switcher = hass.data[DOMAIN].get(config_entry.entry_id)
-    switcher_opts = generate_switcher_opts_from_entry(config_entry)
+    switcher: RfSwitcher = hass.data[DOMAIN].get(entry.entry_id)
     if switcher:
-        switcher.set_options(switcher_opts)
+        _LOGGER.info("Updating switcher options for %s", switcher.unique_id)
+        switcher.update_options(helpers.generate_switcher_options(entry))
 
 
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     """Handle removal of an entry."""
-    switcher = hass.data[DOMAIN].pop(config_entry.entry_id)
-    return await switcher.async_on_remove()
+    switcher: RfSwitcher = hass.data[DOMAIN].pop(config_entry.entry_id)
+    await switcher.async_will_remove_from_hass()
+    return True

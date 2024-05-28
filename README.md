@@ -1,32 +1,41 @@
-# Rf 4 Channel for Home Assistant
+RF Four Channel
 
-## Example Configuration
+# ⚙️ Configuration
 
-Home assistant example cofiguration.yaml
+Add the following to your configuration.yaml file.
 
 ```yaml
 rf4ch:
-  kids_room:
-    name: Kids Room
-    code: "10111010100101100100"
+  my_switcher:
+    name: My Switcher
+    code:
+      channel_a: "0001"
+      channel_b: "0010"
+      channel_c: "0100"
+      channel_d: "1000"
+      channel_on: "1111"
+      channel_off: "0000"
     service:
-      id: esphome.hub01_rf_bridge_send
+      id: rf4ch.dummy_rf_send
+
+  your_switcher:
+    name: Your Switcher
+    code:
+      channel_a: "0001"
+      channel_b: "0010"
+      channel_c: "0100"
+      channel_d: "1000"
+      channel_on: "1111"
+      channel_off: "0000"
+      prefix: "0110"
+    service:
+      id: rf4ch.dummy_rf_send
       data:
         repeat: 6
-    availability: "{{ is_state('binary_sensor.hub01_status','on') }}"
-  art_room:
-    name: Art Room
-    code: "00001101000110000010"
-    service:
-      id: esphome.hub01_rf_bridge_send
-      data:
-        repeat: 6
-    availability: "{{ is_state('binary_sensor.hub01_status','on') and is_state('binary_sensor.node01_status','on')}}"
+    availability_template: "{{ is_state('switch.my_switcher_ch_a','on') }}"
 ```
 
-## Physical Hardware
-
-The service called in above example is provided by an ESPHOME device with service exposed as follows.
+## 🌐 ESPHome API Service
 
 ```yaml
 api:

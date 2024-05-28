@@ -1,76 +1,65 @@
-"""Button Platform for Rf 4 Channel Integration."""
-
-from __future__ import annotations
-
-import logging
+"""Button platform for RF Four Channel integration."""
 
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
-from .models import ACTION_SYNC, Action, RfSwitcher
+from .lib.switcher import SwitcherAction
+from .models import RfSwitcher
 
-_LOGGER = logging.getLogger(__name__)
+ICON_MAP = {
+    SwitcherAction.ON: "mdi:power-on",
+    SwitcherAction.OFF: "mdi:power-off",
+    SwitcherAction.SYNC: "mdi:sync",
+}
 
 
 async def async_setup_entry(
-    hass: HomeAssistant, config_entry: ConfigEntry, add_entities: AddEntitiesCallback
-):
-    """Set up entry."""
-    # Setup connection with switcher
-    uid = config_entry.entry_id
-    switcher: RfSwitcher = hass.data[DOMAIN][uid]
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
+) -> bool:
+    """Set up RF Four Channel Switch from a config entry."""
+    switcher: RfSwitcher = hass.data[DOMAIN].get(entry.entry_id)
+    entites = switcher.get_entities_for_platform(Platform.BUTTON)
 
-    _LOGGER.info("Setting up %s for rf4ch with uid: %s", Platform.BUTTON, uid)
+    async_add_entities(entites)
 
-    # Add switch enitities
-    add_entities(switcher.get_entities(Platform.BUTTON))
+    return True
 
 
 class RfButton(ButtonEntity):
-    """Rf Button Class"""
+    """Entity class for RF Four Channel button."""
 
     _attr_has_entity_name = True
     _attr_should_poll = False
 
-    def __init__(self, switcher: RfSwitcher, action: Action) -> None:
+    def __init__(self, switcher: RfSwitcher, action: SwitcherAction) -> None:
+        """Initialize button."""
+        self._switcher = switcher
         self._action = action
-        self._switcher: RfSwitcher = switcher
-        self._name = action.title()
-        self._unique_id = f"{DOMAIN}_{switcher.unique_id}_{action.lower()}"
+        self._attr_name = f"{action.name}"
+        self._attr_unique_id = f"{DOMAIN}_{switcher.unique_id}_{action}"
+        self._attr_device_info = switcher.device_info
+        self._attr_available = switcher.available
+        self._attr_icon = ICON_MAP[action]
 
     @property
-    def name(self):
-        """Return the name of the switch."""
-        return self._name
+    def name(self) -> str:
+        """Return name."""
+        return self._attr_name
 
     @property
     def unique_id(self) -> str:
-        """Return the unique ID of the switch."""
-        return self._unique_id
+        """Return unique ID."""
+        return self._attr_unique_id
 
     @property
-    def icon(self) -> str:
-        """Return the icon of the switch."""
-        return self._switcher.get_icon(self._action)
-
-    @property
-    def available(self) -> str:
-        """Return the availability of the switch."""
-        if self._action == ACTION_SYNC:
-            return True
-
+    def available(self) -> bool:
+        """Return the availability of the button."""
         return self._switcher.available
 
     def press(self) -> None:
         """Press the button."""
         self._switcher.handle_action(self._action)
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return the device info."""
-        return self._switcher.device_info

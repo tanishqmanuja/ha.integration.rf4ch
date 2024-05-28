@@ -1,4 +1,4 @@
-"""Helpers for Rf 4 Channel Integration."""
+"""Helpers for RF Four Channel integration."""
 
 from copy import copy
 
@@ -7,96 +7,69 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.template import Template
 from homeassistant.helpers.typing import ConfigType
 
-from .const import (
-    CONF_AVAILABILITY,
-    CONF_CODE,
-    CONF_ID,
-    CONF_NAME,
-    CONF_SERVICE,
-    CONF_SERVICE_DATA,
-    CONF_STATELESS,
-    CONF_UNIQUE_ID,
-    DOMAIN,
-    HW_VERSION,
-    MANUFACTURER,
-    MODEL,
-    SW_VERSION,
-)
-from .models import SwitcherConfig, SwitcherOptions
+from . import const
+from .switcher import SwitcherConfig, SwitcherOptions
 
 
-def get_switcher_confs_from_domain_conf(config: ConfigType):
-    """Returns list of switcher configs"""
-    switcher_confs = []
+def normalise_config_entry(config: ConfigType) -> ConfigType:
+    """Normalise config entry."""
+    c = copy(config)
 
-    for key, val in config.items():
-        if isinstance(val, dict):
-            switcher_conf = copy(val)
-            switcher_conf[CONF_UNIQUE_ID] = key
-            switcher_confs.append(switcher_conf)
+    if const.CONF_AVAILABILITY_TEMPLATE in c and isinstance(
+        c[const.CONF_AVAILABILITY_TEMPLATE], Template
+    ):
+        c[const.CONF_AVAILABILITY_TEMPLATE] = c[
+            const.CONF_AVAILABILITY_TEMPLATE
+        ].template
 
-    return switcher_confs
+    return c
 
 
-def generate_switcher_conf_from_entry(entry: ConfigEntry):
-    """Return switcher dataclass"""
-
-    switcher_conf = entry.data
-
-    name = switcher_conf[CONF_NAME]
-    unique_id = switcher_conf[CONF_UNIQUE_ID]
-    service_id = switcher_conf[CONF_SERVICE][CONF_ID]
-    service_data = switcher_conf[CONF_SERVICE].get(CONF_SERVICE_DATA, {})
-    code_prefix = switcher_conf[CONF_CODE]
-    availability_template = switcher_conf.get(CONF_AVAILABILITY)
-    device_info = get_device_info(name=name, uid=unique_id)
+def generate_switcher_config(
+    config_or_entry: ConfigType | ConfigEntry,
+) -> SwitcherConfig:
+    """Generate SwitcherConfig from config or entry."""
+    config = (
+        config_or_entry.data
+        if isinstance(config_or_entry, ConfigEntry)
+        else config_or_entry
+    )
 
     return SwitcherConfig(
-        name=name,
-        unique_id=unique_id,
-        service_id=service_id,
-        service_data=service_data,
-        code_prefix=code_prefix,
-        availability_template=availability_template,
-        device_info=device_info,
+        name=config[const.CONF_NAME],
+        unique_id=config[const.CONF_UNIQUE_ID],
+        code=config[const.CONF_CODE],
+        service=config[const.CONF_SERVICE],
+        availability_template=config.get(const.CONF_AVAILABILITY_TEMPLATE),
+        device_info=get_device_info(
+            config[const.CONF_UNIQUE_ID], config[const.CONF_NAME]
+        ),
     )
 
 
-def generate_switcher_opts_from_entry(entry: ConfigEntry):
-    """Return switcher dataclass"""
+def generate_switcher_options(
+    config_or_entry: ConfigType | ConfigEntry,
+) -> SwitcherOptions:
+    """Generate SwitcherOptions from config or entry."""
 
-    switcher_opts = entry.options
+    options = (
+        config_or_entry.options
+        if isinstance(config_or_entry, ConfigEntry)
+        else config_or_entry.get(const.CONF_OPTIONS, {})
+    )
 
-    stateless = switcher_opts.get(CONF_STATELESS)
-
-    return SwitcherOptions(stateless=stateless)
-
-
-def switcher_conf_to_entry_data(config: ConfigType):
-    """Return serialized config"""
-    data = copy(config)
-
-    template_keys = set([CONF_AVAILABILITY]).intersection(set(data.keys()))
-    for key in template_keys:
-        val = data[key]
-        if isinstance(val, str):
-            data[key] = val
-        elif isinstance(val, Template):
-            data[key] = val.template
-
-    return data
+    return SwitcherOptions(
+        stateless=options.get(const.CONF_STATELESS, False),
+    )
 
 
-def get_device_info(name: str, uid: str) -> DeviceInfo:
-    """Returns device info for switcher"""
+def get_device_info(uid: str, name: str) -> DeviceInfo:
+    """Get device info."""
     return DeviceInfo(
-        identifiers={
-            # Serial numbers are unique identifiers within a specific domain
-            (DOMAIN, uid)
-        },
-        name=f"{name} Switcher",
-        manufacturer=MANUFACTURER,
-        model=MODEL,
-        sw_version=SW_VERSION,
-        hw_version=HW_VERSION,
+        identifiers={(const.DOMAIN, uid)},
+        manufacturer=const.MANUFACTURER,
+        model=const.MODEL,
+        name=name,
+        sw_version=const.SW_VERSION,
+        hw_version=const.HW_VERSION,
     )
