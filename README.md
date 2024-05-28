@@ -1,6 +1,6 @@
-RF Four Channel
+# RF Four Channel
 
-# ⚙️ Configuration
+## ⚙️ Configuration
 
 Add the following to your configuration.yaml file.
 
