@@ -22,6 +22,9 @@ def normalise_config_entry(config: ConfigType) -> ConfigType:
             const.CONF_AVAILABILITY_TEMPLATE
         ].template
 
+    if const.CONF_AVAILABILITY_TEMPLATE not in c:
+        c[const.CONF_AVAILABILITY_TEMPLATE] = None
+
     return c
 
 
