@@ -128,7 +128,7 @@ class RfSwitcher:
 
     @property
     def name(self) -> str:
-        """Rehassname."""
+        """Return name."""
         return self._config.name
 
     @property
