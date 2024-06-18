@@ -8,5 +8,5 @@
     "@release-it/conventional-changelog": "^8.0.1",
     "release-it": "^17.3.0"
   },
-  "version": "1.0.5"
+  "version": "1.0.6"
 }
