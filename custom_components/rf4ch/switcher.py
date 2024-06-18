@@ -47,6 +47,7 @@ class SwitcherConfig:
     code: SwitcherCodeDict
     service: RfServiceDict
     availability_template: str
+    transmission_gap: float | None
     device_info: DeviceInfo
 
 
@@ -153,6 +154,11 @@ class RfSwitcher:
     def is_stateless(self) -> bool:
         """Return stateless."""
         return self._options.stateless
+
+    @property
+    def transmission_gap(self) -> float | None:
+        """Return transmission gap in seconds."""
+        return self._config.transmission_gap
 
     def get_channel(self, channel: SwitcherChannel) -> bool:
         """Get channel state."""

@@ -27,6 +27,8 @@ CONF_CODE_ON = "channel_on"
 CONF_CODE_OFF = "channel_off"
 CONF_CODE_PREFIX = "prefix"
 
+CONF_TRANSMISSION_GAP = "transmission_gap"
+
 SERVICE_DUMMY_RF_SEND = "dummy_rf_send"
 SERVICE_INTERNAL_STATE_ON = "internal_state_on"
 SERVICE_INTERNAL_STATE_OFF = "internal_state_off"

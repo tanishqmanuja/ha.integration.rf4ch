@@ -3,6 +3,8 @@
 import asyncio
 import json
 import logging
+from types import MappingProxyType
+from typing import Any
 
 import voluptuous as vol
 
@@ -20,7 +22,7 @@ from .switcher import RfSwitcher
 _LOGGER = logging.getLogger(__name__)
 
 ATTR_QUEUE = "RF_QUEUE"
-QUEUE_INTERVAL = 0.5  # in seconds
+DEFAULT_TRANSMISSION_GAP = 0.25  # in seconds
 
 CONFIG_SCHEMA = vol.Schema(
     {DOMAIN: cv.schema_with_slug_keys(SWITCHER_CONFIG_SCHEMA)},
@@ -55,15 +57,15 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         await hass.config_entries.async_remove(entry.entry_id)
 
     # Add new entries or update existing ones
-    def _are_same_entries(user_config_entry, hass_config_entry):
+    def _are_same_entries(
+        user_config_entry: ConfigType, hass_config_entry: MappingProxyType[str, Any]
+    ):
         a = helpers.normalise_config_entry(user_config_entry)
         b = hass_config_entry  # Mapping proxy canot be normalised
 
-        keys = set(a.keys()).intersection(set(b.keys()))
-
-        return hash(json.dumps({k: a[k] for k in keys}, sort_keys=True)) == hash(
-            json.dumps({k: b[k] for k in keys}, sort_keys=True)
-        )
+        return hash(
+            json.dumps({k: a[k] for k in dict.keys(a)}, sort_keys=True)
+        ) == hash(json.dumps({k: b.get(k, None) for k in dict.keys(a)}, sort_keys=True))
 
     for unique_id, config_entry in config[DOMAIN].items():
         _found = next(
@@ -109,17 +111,23 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
     async def async_queue_worker():
         while True:
-            queue = hass.data[DOMAIN][ATTR_QUEUE]
+            queue: asyncio.Queue = hass.data[DOMAIN][ATTR_QUEUE]
             data = await queue.get()
 
             code = data.get("code")
             switcher: RfSwitcher = data.get("switcher")
 
             if switcher and code:
+                transmission_gap = switcher.transmission_gap or DEFAULT_TRANSMISSION_GAP
+                _LOGGER.info(
+                    "Transmitting RF Code: %s with Transmission Gap: %s",
+                    code,
+                    transmission_gap,
+                )
                 await hass.async_add_executor_job(switcher.send_rf_code, code)
+                await asyncio.sleep(transmission_gap)
 
             queue.task_done()
-            await asyncio.sleep(QUEUE_INTERVAL)
 
     hass.loop.create_task(async_queue_worker(), name=ATTR_QUEUE)
 

@@ -20,6 +20,7 @@ from .const import (
     CONF_SERVICE,
     CONF_SERVICE_DATA,
     CONF_STATELESS,
+    CONF_TRANSMISSION_GAP,
 )
 
 RF_SERVICE_CONFIG_SCHEMA = vol.Schema(
@@ -50,5 +51,6 @@ SWITCHER_CONFIG_SCHEMA = vol.Schema(
         vol.Required(CONF_CODE): RF_CODE_CONFIG_SCHEMA,
         vol.Optional(CONF_AVAILABILITY_TEMPLATE): cv.template,
         vol.Optional(CONF_OPTIONS): SWITCHER_OPTIONS_SCHEMA,
+        vol.Optional(CONF_TRANSMISSION_GAP): vol.Range(min=0.0, max=1.0),
     }
 )

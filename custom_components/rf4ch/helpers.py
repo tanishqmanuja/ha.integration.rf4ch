@@ -22,8 +22,10 @@ def normalise_config_entry(config: ConfigType) -> ConfigType:
             const.CONF_AVAILABILITY_TEMPLATE
         ].template
 
-    if const.CONF_AVAILABILITY_TEMPLATE not in c:
-        c[const.CONF_AVAILABILITY_TEMPLATE] = None
+    optional_keys = [const.CONF_AVAILABILITY_TEMPLATE, const.CONF_TRANSMISSION_GAP]
+    for key in optional_keys:
+        if key not in c:
+            c[key] = None
 
     return c
 
@@ -44,6 +46,7 @@ def generate_switcher_config(
         code=config[const.CONF_CODE],
         service=config[const.CONF_SERVICE],
         availability_template=config.get(const.CONF_AVAILABILITY_TEMPLATE),
+        transmission_gap=config.get(const.CONF_TRANSMISSION_GAP, None),
         device_info=get_device_info(
             config[const.CONF_UNIQUE_ID], config[const.CONF_NAME]
         ),
