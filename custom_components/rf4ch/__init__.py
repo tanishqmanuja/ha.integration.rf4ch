@@ -121,7 +121,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             queue.task_done()
             await asyncio.sleep(QUEUE_INTERVAL)
 
-    hass.loop.create_task(async_queue_worker(), ATTR_QUEUE)
+    hass.loop.create_task(async_queue_worker(), name=ATTR_QUEUE)
 
     return True
 
