@@ -1,5 +1,6 @@
 """Switcher Device for RF Four Channel integration."""
 
+import asyncio
 from dataclasses import dataclass
 import logging
 from typing import TypedDict
@@ -109,12 +110,14 @@ class RfSwitcher:
         hass: HomeAssistant,
         config: SwitcherConfig,
         options: SwitcherOptions = SwitcherOptions(stateless=False),
+        queue: asyncio.Queue | None = None,
     ) -> None:
         """Initialize switcher."""
         self.hass = hass
         self._config = config
         self._options = options
-        self._switcher = InternalSwitcher(config.code, self._send_rf_code)
+        self._queue = queue
+        self._switcher = InternalSwitcher(config.code, self._queue_rf_code)
         self._entity_store = EntityStore()
         self._available = True
 
@@ -199,7 +202,18 @@ class RfSwitcher:
         """Update options."""
         self._options = options
 
-    def _send_rf_code(self, code: str):
+    def _queue_rf_code(self, code: str):
+        """Queue RF code."""
+        if self._queue:
+            self.hass.loop.call_soon_threadsafe(
+                self._queue.put_nowait, {"switcher": self, "code": code}
+            )
+        else:
+            self.send_rf_code(code)
+
+    @callback
+    def send_rf_code(self, code: str):
+        """Send RF code."""
         domain, service = self._config.service["id"].split(".")
         extra_service_data = self._config.service.get("data", None) or {}
         self.hass.services.call(domain, service, {"code": code, **extra_service_data})

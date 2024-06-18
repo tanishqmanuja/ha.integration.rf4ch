@@ -1,5 +1,6 @@
 """RF Four Channel integration."""
 
+import asyncio
 import json
 import logging
 
@@ -17,6 +18,9 @@ from .services import async_setup_dummy_rf_send_service
 from .switcher import RfSwitcher
 
 _LOGGER = logging.getLogger(__name__)
+
+ATTR_QUEUE = "RF_QUEUE"
+QUEUE_INTERVAL = 0.5  # in seconds
 
 CONFIG_SCHEMA = vol.Schema(
     {DOMAIN: cv.schema_with_slug_keys(SWITCHER_CONFIG_SCHEMA)},
@@ -97,6 +101,28 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                 )
             )
 
+    # Setup Queue
+    if DOMAIN not in hass.data:
+        hass.data.setdefault(DOMAIN, {})
+
+    hass.data[DOMAIN][ATTR_QUEUE] = asyncio.Queue()
+
+    async def async_queue_worker():
+        while True:
+            queue = hass.data[DOMAIN]["_queue"]
+            data = await queue.get()
+
+            code = data.get("code")
+            switcher: RfSwitcher = data.get("switcher")
+
+            if switcher and code:
+                await hass.async_add_executor_job(switcher.send_rf_code, code)
+
+            queue.task_done()
+            await asyncio.sleep(QUEUE_INTERVAL)
+
+    hass.loop.create_task(async_queue_worker(), ATTR_QUEUE)
+
     return True
 
 
@@ -105,11 +131,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if DOMAIN not in hass.data:
         hass.data.setdefault(DOMAIN, {})
 
+    queue = hass.data[DOMAIN].get(ATTR_QUEUE)
     switcher = RfSwitcher(
         hass,
         helpers.generate_switcher_config(entry),
         helpers.generate_switcher_options(entry),
+        queue,
     )
+
     await switcher.async_added_to_hass()
 
     hass.data[DOMAIN][entry.entry_id] = switcher
