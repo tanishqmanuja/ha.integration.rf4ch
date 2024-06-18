@@ -129,7 +129,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
             queue.task_done()
 
-    hass.loop.create_task(async_queue_worker(), name=ATTR_QUEUE)
+    hass.async_create_background_task(async_queue_worker(), name=ATTR_QUEUE)
 
     return True
 
