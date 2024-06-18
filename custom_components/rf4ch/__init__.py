@@ -109,7 +109,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
     async def async_queue_worker():
         while True:
-            queue = hass.data[DOMAIN]["_queue"]
+            queue = hass.data[DOMAIN][ATTR_QUEUE]
             data = await queue.get()
 
             code = data.get("code")
