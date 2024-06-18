@@ -8,6 +8,8 @@ These devices are dirt cheap! Can be retro-fitted into existing switches and als
 
 The only problem being they are not "smart", but with a wifi enabled device acting as a bridge you can control them from Home Assistant.
 
+![Logo](https://raw.github.com/tanishqmanuja/static/main/assets/rf4ch/switcher.webp?maxAge=2592000)
+
 ## ⚙️ Configuration
 
 Example snippet for configuration.yaml file.
