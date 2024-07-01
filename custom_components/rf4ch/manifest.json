@@ -1,15 +1,13 @@
 {
   "domain": "rf4ch",
-  "version": "1.0.6",
   "name": "RF Four Channel",
-  "codeowners": [
-    "@tanishqmanuja"
-  ],
+  "codeowners": ["@tanishqmanuja"],
+  "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/tanishqmanuja/ha.integration.rf4ch",
-  "issue_tracker": "https://github.com/tanishqmanuja/ha.integration.rf4ch/issues",
-  "iot_class": "assumed_state",
   "integration_type": "hub",
-  "config_flow": true,
-  "requirements": []
+  "iot_class": "assumed_state",
+  "issue_tracker": "https://github.com/tanishqmanuja/ha.integration.rf4ch/issues",
+  "requirements": [],
+  "version": "1.0.6"
 }
