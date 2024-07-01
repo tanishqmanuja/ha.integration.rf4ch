@@ -1,5 +1,9 @@
 # Rf4Ch //RF Four Channel
 
+[![HACS Badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
+[![License](https://img.shields.io/github/license/tanishqmanuja/ha.integration.rf4ch?style=for-the-badge)](https://github.com/tanishqmanuja/ha.integration.rf4ch/blob/main/LICENSE)
+[![Latest Release](https://img.shields.io/github/v/release/tanishqmanuja/ha.integration.rf4ch?style=for-the-badge)](https://github.com/tanishqmanuja/ha.integration.rf4ch/releases)
+
 Home Assistant integration to control my basic of the shelf Four Channel RF Switchers easily.
 
 #### 📦 Actual Switcher Device
