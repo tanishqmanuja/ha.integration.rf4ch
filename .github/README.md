@@ -10,6 +10,12 @@ The only problem being they are not "smart", but with a wifi enabled device acti
 
 ![Logo](https://raw.github.com/tanishqmanuja/static/main/assets/rf4ch/switcher.webp?maxAge=2592000)
 
+## 🚀 Installation
+
+Cab be added via HACS by adding this repository's link into custom repositories dropdown.
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=tanishqmanuja&repository=ha.integration.rf4ch&category=Integration)
+
 ## ⚙️ Configuration
 
 Example snippet for configuration.yaml file.
