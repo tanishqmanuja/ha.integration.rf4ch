@@ -7,7 +7,15 @@ on:
       - "feat**"
     tags-ignore:
       - "**"
+    paths:
+      - "custom_components/**"
+      - "pyproject.toml"
+      - ".github/workflows/validate.yaml"
   pull_request:
+    paths:
+      - "custom_components/**"
+      - "pyproject.toml"
+      - ".github/workflows/validate.yaml"
 
 jobs:
   validate-hassfest:
@@ -15,7 +23,7 @@ jobs:
     name: "Hassfest"
     steps:
       - name: "Checkout the repository"
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
       - name: "Validate Hassfest"
         uses: home-assistant/actions/hassfest@master
@@ -25,7 +33,7 @@ jobs:
     name: "HACS"
     steps:
       - name: "Checkout the repository"
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
       - name: "Validate HACS"
         uses: hacs/action@main
