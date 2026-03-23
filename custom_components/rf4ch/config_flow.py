@@ -3,12 +3,11 @@
 import logging
 from typing import Any
 
-import voluptuous as vol
-
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import selector
 from homeassistant.util import slugify
+import voluptuous as vol
 
 from .const import (
     CONF_AVAILABILITY_TEMPLATE,

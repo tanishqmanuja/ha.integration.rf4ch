@@ -1,8 +1,7 @@
 """Schema for RF Four Channel integration."""
 
-import voluptuous as vol
-
 import homeassistant.helpers.config_validation as cv
+import voluptuous as vol
 
 from .const import (
     CONF_AVAILABILITY_TEMPLATE,

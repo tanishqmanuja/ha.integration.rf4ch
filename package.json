@@ -1,12 +1,14 @@
 {
   "name": "rf4ch",
   "scripts": {
+    "lint": "uvx ruff check custom_components/rf4ch/",
+    "format": "uvx ruff format custom_components/rf4ch/",
     "release": "release-it"
   },
   "devDependencies": {
-    "@release-it/bumper": "^6.0.1",
-    "@release-it/conventional-changelog": "^8.0.1",
-    "release-it": "^17.3.0"
+    "@release-it/bumper": "^7.0.5",
+    "@release-it/conventional-changelog": "^10.0.6",
+    "release-it": "^19.2.4"
   },
   "version": "1.0.6"
 }

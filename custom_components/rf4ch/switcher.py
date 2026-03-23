@@ -7,7 +7,11 @@ from typing import Any, TypedDict
 
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import HomeAssistantError, ServiceValidationError, TemplateError
+from homeassistant.exceptions import (
+    HomeAssistantError,
+    ServiceValidationError,
+    TemplateError,
+)
 from homeassistant.helpers.entity import DeviceInfo, Entity
 from homeassistant.helpers.event import TrackTemplate, async_track_template_result
 from homeassistant.helpers.template import Template
@@ -286,7 +290,9 @@ class RfSwitcher:
         if state == self._switcher.get_channel(channel):
             return True
 
-        if not await self.async_queue_rf_code(self._switcher.get_code_for_channel(channel)):
+        if not await self.async_queue_rf_code(
+            self._switcher.get_code_for_channel(channel)
+        ):
             return False
 
         self._switcher.set_channel(channel, state, only_internal=True)

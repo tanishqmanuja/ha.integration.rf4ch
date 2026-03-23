@@ -41,7 +41,7 @@ class RfSwitch(SwitchEntity, RestoreEntity):
         self._attr_device_info = switcher.device_info
         self._attr_is_on = switcher.get_channel(channel)
         self._attr_available = switcher.available
-        self._attr_icon = f"mdi:numeric-{channel+1}-box"
+        self._attr_icon = f"mdi:numeric-{channel + 1}-box"
 
     @property
     def name(self) -> str:

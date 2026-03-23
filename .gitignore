@@ -1,11 +1,20 @@
 # Cache
 __pycache__/
+*.pyc
 
 # Dependencies
 node_modules/
 
 # Lockfiles
-bun.lockb
+uv.lock
+bun.lock
 
 # Env
 .env
+
+# Python
+.venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/

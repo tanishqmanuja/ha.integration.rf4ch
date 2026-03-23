@@ -6,12 +6,11 @@ import logging
 from types import MappingProxyType
 from typing import Any
 
-import voluptuous as vol
-
 from homeassistant.config_entries import SOURCE_IMPORT, SOURCE_USER, ConfigEntry
 from homeassistant.core import HomeAssistant
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.typing import ConfigType
+import voluptuous as vol
 
 from . import helpers
 from .const import CONF_UNIQUE_ID, DOMAIN, PLATFORMS

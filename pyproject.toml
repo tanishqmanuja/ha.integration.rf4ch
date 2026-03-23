@@ -1,0 +1,40 @@
+[project]
+name = "rf4ch"
+version = "1.0.6"
+requires-python = ">=3.12"
+dependencies = [
+    "homeassistant>=2024.0.0",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+indent-width = 4
+
+[tool.ruff.lint]
+select = [
+  "E",
+  "W",
+  "F",
+  "I",
+  "D",
+  "B",
+  "C4",
+  "UP",
+  "ASYNC",
+]
+ignore = [
+  "E501",
+  "D213",
+  "D406",
+  "D407",
+  "D413",
+  "D202",
+  "B008",
+  "UP041",
+]
+
+[tool.ruff.lint.isort]
+force-sort-within-sections = true
+combine-as-imports = true
+split-on-trailing-comma = false
