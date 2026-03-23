@@ -118,18 +118,28 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
                 code = data.get("code")
                 switcher: RfSwitcher = data.get("switcher")
+                future: asyncio.Future | None = data.get("future")
+                success = False
 
-                if switcher and code:
-                    transmission_gap = switcher.transmission_gap or DEFAULT_TRANSMISSION_GAP
-                    _LOGGER.info(
-                        "Transmitting RF Code: %s with Transmission Gap: %s",
-                        code,
-                        transmission_gap,
-                    )
-                    await switcher.async_send_rf_code(code)
-                    await asyncio.sleep(transmission_gap)
+                try:
+                    if switcher and code:
+                        transmission_gap = (
+                            switcher.transmission_gap or DEFAULT_TRANSMISSION_GAP
+                        )
+                        _LOGGER.info(
+                            "Transmitting RF Code: %s with Transmission Gap: %s",
+                            code,
+                            transmission_gap,
+                        )
+                        success = await switcher.async_send_rf_code(code)
+                        await asyncio.sleep(transmission_gap)
+                except Exception:
+                    _LOGGER.exception("Failed to process queued RF transmission")
+                finally:
+                    if future is not None and not future.done():
+                        future.set_result(success)
 
-                queue.task_done()
+                    queue.task_done()
 
         except asyncio.CancelledError:
             _LOGGER.debug("Queue worker cancelled")

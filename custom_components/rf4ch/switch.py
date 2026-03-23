@@ -63,13 +63,13 @@ class RfSwitch(SwitchEntity, RestoreEntity):
         """Return true if switch is on."""
         return self._switcher.get_channel(self._channel)
 
-    def turn_on(self, **kwargs) -> None:
+    async def async_turn_on(self, **kwargs) -> None:
         """Turn on switch."""
-        self._switcher.set_channel(self._channel, True)
+        await self._switcher.async_set_channel(self._channel, True)
 
-    def turn_off(self, **kwargs) -> None:
+    async def async_turn_off(self, **kwargs) -> None:
         """Turn off switch."""
-        self._switcher.set_channel(self._channel, False)
+        await self._switcher.async_set_channel(self._channel, False)
 
     def override_on(self, **kwargs):
         """Override internal state On."""

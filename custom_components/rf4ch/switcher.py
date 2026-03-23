@@ -3,11 +3,11 @@
 import asyncio
 from dataclasses import dataclass
 import logging
-from typing import TypedDict
+from typing import Any, TypedDict
 
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import TemplateError
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError, TemplateError
 from homeassistant.helpers.entity import DeviceInfo, Entity
 from homeassistant.helpers.event import TrackTemplate, async_track_template_result
 from homeassistant.helpers.template import Template
@@ -22,6 +22,7 @@ from .lib.switcher import (
 from .switch import RfSwitch
 
 _LOGGER = logging.getLogger(__name__)
+SERVICE_CALL_TIMEOUT = 5.0
 
 
 class RfServiceDict(TypedDict):
@@ -217,16 +218,80 @@ class RfSwitcher:
         else:
             self.send_rf_code(code)
 
-    async def async_send_rf_code(self, code: str) -> None:
+    async def async_queue_rf_code(self, code: str) -> bool:
+        """Queue RF code and wait for the response."""
+        if self._queue is None:
+            return await self.async_send_rf_code(code)
+
+        future = self.hass.loop.create_future()
+        await self._queue.put({"switcher": self, "code": code, "future": future})
+        return await future
+
+    def _service_response_succeeded(self, response: Any) -> bool:
+        """Return whether the RF service acknowledged the transmission."""
+        if not isinstance(response, dict):
+            return False
+
+        return bool(response.get("success"))
+
+    async def async_send_rf_code(self, code: str) -> bool:
         """Send RF code on Home Assistant's event loop."""
         domain, service = self._config.service["id"].split(".")
         extra_service_data = self._config.service.get("data", None) or {}
-        await self.hass.services.async_call(
-            domain,
-            service,
-            {"code": code, **extra_service_data},
-            blocking=True,
-        )
+        try:
+            response = await asyncio.wait_for(
+                self.hass.services.async_call(
+                    domain,
+                    service,
+                    {"code": code, **extra_service_data},
+                    blocking=True,
+                    return_response=True,
+                ),
+                timeout=SERVICE_CALL_TIMEOUT,
+            )
+        except ServiceValidationError:
+            try:
+                await asyncio.wait_for(
+                    self.hass.services.async_call(
+                        domain,
+                        service,
+                        {"code": code, **extra_service_data},
+                        blocking=True,
+                    ),
+                    timeout=SERVICE_CALL_TIMEOUT,
+                )
+                return True
+            except (asyncio.TimeoutError, HomeAssistantError):
+                _LOGGER.warning(
+                    "RF transmission via %s failed",
+                    self._config.service["id"],
+                )
+                return False
+        except (asyncio.TimeoutError, HomeAssistantError):
+            _LOGGER.warning(
+                "RF transmission via %s failed",
+                self._config.service["id"],
+            )
+            return False
+
+        return self._service_response_succeeded(response)
+
+    async def async_set_channel(self, channel: SwitcherChannel, state: bool) -> bool:
+        """Set channel state only after the RF transmission is acknowledged."""
+        if self.is_stateless:
+            return await self.async_queue_rf_code(
+                self._switcher.get_code_for_channel(channel)
+            )
+
+        if state == self._switcher.get_channel(channel):
+            return True
+
+        if not await self.async_queue_rf_code(self._switcher.get_code_for_channel(channel)):
+            return False
+
+        self._switcher.set_channel(channel, state, only_internal=True)
+        self._entity_store.mark_for_update(Platform.SWITCH, channel)
+        return True
 
     @callback
     def send_rf_code(self, code: str) -> None:

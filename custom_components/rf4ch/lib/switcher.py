@@ -130,6 +130,10 @@ class Switcher:
         if self.__send_rf_callback is not None:
             self.__send_rf_callback(code)
 
+    def get_code_for_channel(self, channel: SwitcherChannel):
+        """Get RF code for a channel."""
+        return self.__c.get_code_for_channel(channel)
+
     def get_channel(self, channel: SwitcherChannel):
         """Get channel state."""
         return self.__s.get_channel(channel)
