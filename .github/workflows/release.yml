@@ -4,20 +4,27 @@ on:
   workflow_dispatch:
     inputs:
       bump:
-        description: 'Version bump type'
+        description: "Version bump type"
         required: true
-        default: 'patch'
+        default: "patch"
         type: choice
         options:
           - patch
           - minor
           - major
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -27,6 +34,6 @@ jobs:
         run: bun install
 
       - name: Release
-        run: bun run release -- --release-version=${{ github.event.inputs.bump }}
+        run: bun run release ${{ github.event.inputs.bump }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
