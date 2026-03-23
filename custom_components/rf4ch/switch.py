@@ -54,7 +54,7 @@ class RfSwitch(SwitchEntity, RestoreEntity):
         return self._attr_unique_id
 
     @property
-    def available(self) -> str:
+    def available(self) -> bool:
         """Return the availability of the switch."""
         return self._switcher.available
 
