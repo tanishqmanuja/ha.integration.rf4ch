@@ -13,6 +13,22 @@
     "publish": false
   },
   "plugins": {
+    "bumper": {
+      "out": [
+        {
+          "file": "package.json",
+          "path": "version"
+        },
+        {
+          "file": "pyproject.toml",
+          "path": "project.version"
+        },
+        {
+          "file": "custom_components/rf4ch/manifest.json",
+          "path": "version"
+        }
+      ]
+    },
     "@release-it/bumper": {
       "in": "custom_components/rf4ch/manifest.json",
       "out": "custom_components/rf4ch/manifest.json"
