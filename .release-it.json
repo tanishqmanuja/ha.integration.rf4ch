@@ -13,7 +13,8 @@
     "publish": false
   },
   "plugins": {
-    "bumper": {
+    "@release-it/bumper": {
+      "in": "package.json",
       "out": [
         {
           "file": "package.json",
@@ -29,10 +30,6 @@
         }
       ]
     },
-    "@release-it/bumper": {
-      "in": "custom_components/rf4ch/manifest.json",
-      "out": "custom_components/rf4ch/manifest.json"
-    },
     "@release-it/conventional-changelog": {
       "preset": {
         "name": "conventionalcommits",
@@ -42,8 +39,12 @@
             "section": "🎉 Features"
           },
           {
+            "type": "refactor",
+            "section": "🏗️ Refactors"
+          },
+          {
             "type": "fix",
-            "section": "🐛Bug Fixes"
+            "section": "🐛 Bug Fixes"
           }
         ]
       },
