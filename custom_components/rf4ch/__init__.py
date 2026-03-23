@@ -95,12 +95,13 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             data[CONF_UNIQUE_ID] = unique_id
 
             _LOGGER.debug("Adding %s, %s", unique_id, data)
-            hass.async_create_task(
+            hass.async_create_background_task(
                 hass.config_entries.flow.async_init(
                     DOMAIN,
                     context={"source": SOURCE_IMPORT},
                     data=data,
-                )
+                ),
+                name=f"{DOMAIN}_import_{unique_id}",
             )
 
     # Setup Queue
@@ -110,24 +111,28 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     hass.data[DOMAIN][ATTR_QUEUE] = asyncio.Queue()
 
     async def async_queue_worker():
-        while True:
-            queue: asyncio.Queue = hass.data[DOMAIN][ATTR_QUEUE]
-            data = await queue.get()
+        try:
+            while True:
+                queue: asyncio.Queue = hass.data[DOMAIN][ATTR_QUEUE]
+                data = await queue.get()
 
-            code = data.get("code")
-            switcher: RfSwitcher = data.get("switcher")
+                code = data.get("code")
+                switcher: RfSwitcher = data.get("switcher")
 
-            if switcher and code:
-                transmission_gap = switcher.transmission_gap or DEFAULT_TRANSMISSION_GAP
-                _LOGGER.info(
-                    "Transmitting RF Code: %s with Transmission Gap: %s",
-                    code,
-                    transmission_gap,
-                )
-                await hass.async_add_executor_job(switcher.send_rf_code, code)
-                await asyncio.sleep(transmission_gap)
+                if switcher and code:
+                    transmission_gap = switcher.transmission_gap or DEFAULT_TRANSMISSION_GAP
+                    _LOGGER.info(
+                        "Transmitting RF Code: %s with Transmission Gap: %s",
+                        code,
+                        transmission_gap,
+                    )
+                    await switcher.async_send_rf_code(code)
+                    await asyncio.sleep(transmission_gap)
 
-            queue.task_done()
+                queue.task_done()
+
+        except asyncio.CancelledError:
+            _LOGGER.debug("Queue worker cancelled")
 
     hass.async_create_background_task(async_queue_worker(), name=ATTR_QUEUE)
 
@@ -152,7 +157,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][entry.entry_id] = switcher
 
     # Setup platforms
-    hass.create_task(hass.config_entries.async_forward_entry_setups(entry, PLATFORMS))
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     # Add Update Listener
     entry.async_on_unload(entry.add_update_listener(async_update_listener))
 

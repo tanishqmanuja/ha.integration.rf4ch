@@ -217,12 +217,21 @@ class RfSwitcher:
         else:
             self.send_rf_code(code)
 
-    @callback
-    def send_rf_code(self, code: str):
-        """Send RF code."""
+    async def async_send_rf_code(self, code: str) -> None:
+        """Send RF code on Home Assistant's event loop."""
         domain, service = self._config.service["id"].split(".")
         extra_service_data = self._config.service.get("data", None) or {}
-        self.hass.services.call(domain, service, {"code": code, **extra_service_data})
+        await self.hass.services.async_call(
+            domain,
+            service,
+            {"code": code, **extra_service_data},
+            blocking=True,
+        )
+
+    @callback
+    def send_rf_code(self, code: str) -> None:
+        """Schedule RF code transmission on Home Assistant's event loop."""
+        self.hass.add_job(self.async_send_rf_code(code))
 
     def _update_availability(self, result):
         """Update availability based on template result."""
