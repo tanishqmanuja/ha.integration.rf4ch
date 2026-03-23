@@ -9,9 +9,7 @@
     "releaseName": "Rf4Ch v${version}",
     "tokenRef": "GITHUB_TOKEN"
   },
-  "npm": {
-    "publish": false
-  },
+  "npm": false,
   "plugins": {
     "@release-it/bumper": {
       "in": "package.json",
