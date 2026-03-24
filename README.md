@@ -24,7 +24,11 @@ rf4ch:
       channel_on: "1111"
       channel_off: "0000"
     service:
-      id: rf4ch.dummy_rf_send
+      id: esphome.rfbridge01_transmit_generic
+      data:
+        protocol: 1
+        repeat: 4
+        wait: 0
 
   your_switcher:
     name: Your Switcher
@@ -37,28 +41,33 @@ rf4ch:
       channel_off: "0000"
       prefix: "0110"
     service:
-      id: rf4ch.dummy_rf_send
+      id: esphome.rfbridge01_transmit_generic
       data:
-        repeat: 6
+        protocol: 1
+        repeat: 4
+        wait: 0
     availability_template: "{{ is_state('switch.my_switcher_ch_a','on') }}"
 ```
 
-## 🌐 ESPHome API Service
-
-This is how I expose a RF Bridge service to Home Assistant.
+## 🌐 ESPHome API Action
 
 ```yaml
 api:
-  services:
-    - service: rf_bridge_send
+  actions:
+    - action: transmit_generic
+      supports_response: status
       variables:
+        protocol: int
         code: string
         repeat: int
+        wait: int
       then:
         - remote_transmitter.transmit_rc_switch_raw:
-            protocol: 1
+            protocol: !lambda "return esphome::remote_base::RC_SWITCH_PROTOCOLS[protocol];"
             code: !lambda "return code;"
             repeat:
               times: !lambda "return repeat;"
-              wait_time: 0s
+              wait_time: !lambda "return wait;"
+        - api.respond:
+            success: true
 ```
